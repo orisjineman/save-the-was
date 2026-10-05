@@ -1,6 +1,7 @@
 package org.example.savethewas.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -27,6 +28,8 @@ public interface MenuMapper {
     int softDeleteById(@Param("id") long id);
 
     // 커서로 읽을 때는 "id만" 뽑는게 제일 가볍다
+    // useCursorFetch=true(URL) + fetchSize 가 둘 다 있어야 MySQL 서버 커서로 진짜 스트리밍된다
+    @Options(fetchSize = 1000)
     @Select("""
                 SELECT m.id
                 FROM menu m

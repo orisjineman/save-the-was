@@ -15,7 +15,13 @@ import java.util.List;
 public class CursorDeleteService {
     private final MenuMapper menuMapper;
 
-    public record CursorDeleteResult(long scannedIds, long updatedRows, int chunkSize, long tookMs) {
+    public record CursorDeleteResult(long scannedIds, long updatedRows, int chunkSize, long heapAfterOpenMb, long tookMs) {
+    }
+
+    private static long usedHeapMb() {
+        System.gc();
+        Runtime rt = Runtime.getRuntime();
+        return (rt.totalMemory() - rt.freeMemory()) >> 20;
     }
 
     // 주의: Cursor는 ResultSet을 물고 있어서 트랜잭션/커넥션 유지 필요함!!
@@ -23,6 +29,8 @@ public class CursorDeleteService {
     public CursorDeleteResult deleteMenusWithCursor(String region, int chunkSize) throws IOException {
         long t0 = System.currentTimeMillis();
 
+        long heapBefore = usedHeapMb();
+        long heapAfterOpen = 0;
         long scanned = 0;
         long updated = 0;
 
@@ -32,6 +40,9 @@ public class CursorDeleteService {
         // 이 순간 DB 내부 상태!!
         // query 실행 완료, 결과 테이블(ResultSet) 준비됨, 커넥션에 결과 핸들 붙여둠
         try (Cursor<Long> cursor = menuMapper.streamMenuIdsByRegion(region)) {
+            // 커서 오픈 직후(아직 순회 전) 힙 증가량: 버퍼링되면 여기서 커진다
+            heapAfterOpen = usedHeapMb() - heapBefore;
+
             // for문 진입하면, 내부적으로 ResultSet.next() 호출
             // WAS ----(fetch request)---> DB
             // WAS <---(rows chunk)------- DB
@@ -55,6 +66,6 @@ public class CursorDeleteService {
         }
 
         long tookMs = System.currentTimeMillis() - t0;
-        return new CursorDeleteResult(scanned, updated, chunkSize, tookMs);
+        return new CursorDeleteResult(scanned, updated, chunkSize, heapAfterOpen, tookMs);
     }
 }
