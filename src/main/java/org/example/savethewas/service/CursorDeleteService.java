@@ -3,6 +3,7 @@ package org.example.savethewas.service;
 import lombok.RequiredArgsConstructor;
 import org.apache.ibatis.cursor.Cursor;
 import org.example.savethewas.mapper.MenuMapper;
+import org.example.savethewas.metrics.RunMetrics;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +16,8 @@ import java.util.List;
 public class CursorDeleteService {
     private final MenuMapper menuMapper;
 
-    public record CursorDeleteResult(long scannedIds, long updatedRows, int chunkSize, long heapAfterOpenMb, long tookMs) {
+    public record CursorDeleteResult(long scannedIds, long updatedRows, int chunkSize, long heapAfterOpenMb, long tookMs,
+                                    RunMetrics.Result metrics) {
     }
 
     private static long usedHeapMb() {
@@ -27,6 +29,7 @@ public class CursorDeleteService {
     // 주의: Cursor는 ResultSet을 물고 있어서 트랜잭션/커넥션 유지 필요함!!
     @Transactional
     public CursorDeleteResult deleteMenusWithCursor(String region, int chunkSize) throws IOException {
+        RunMetrics runMetrics = RunMetrics.start();
         long t0 = System.currentTimeMillis();
 
         long heapBefore = usedHeapMb();
@@ -66,6 +69,6 @@ public class CursorDeleteService {
         }
 
         long tookMs = System.currentTimeMillis() - t0;
-        return new CursorDeleteResult(scanned, updated, chunkSize, heapAfterOpen, tookMs);
+        return new CursorDeleteResult(scanned, updated, chunkSize, heapAfterOpen, tookMs, runMetrics.finish());
     }
 }

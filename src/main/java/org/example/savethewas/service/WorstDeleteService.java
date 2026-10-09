@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.savethewas.domain.Menu;
 import org.example.savethewas.domain.Store;
 import org.example.savethewas.mapper.MenuMapper;
+import org.example.savethewas.metrics.RunMetrics;
 import org.example.savethewas.mapper.StoreMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +22,14 @@ public class WorstDeleteService {
             long storeCount,
             long menusLoaded,
             long menusUpdated,
-            long tookMs) {
+            long tookMs,
+            RunMetrics.Result metrics) {
     }
 
     // 일부러 트랜잭션 걸어두면 락/커넥션 오래 잡고 더 잘 터짐
     @Transactional
     public WorstDeleteResult deleteMenusWorst(String region) {
+        RunMetrics runMetrics = RunMetrics.start();
         long t0 = System.currentTimeMillis();
 
         List<Store> stores = storeMapper.findByRegion(region);
@@ -47,6 +50,6 @@ public class WorstDeleteService {
         }
 
         long tookMs = System.currentTimeMillis() - t0;
-        return new WorstDeleteResult(stores.size(), totalMenusLoaded, totalMenusUpdated, tookMs);
+        return new WorstDeleteResult(stores.size(), totalMenusLoaded, totalMenusUpdated, tookMs, runMetrics.finish());
     }
 }
